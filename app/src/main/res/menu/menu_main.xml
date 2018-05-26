@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context="com.example.bobby.location.MainActivity">
+    <item
+        android:id="@+id/search_View"
+        android:icon="@drawable/search"
+        android:orderInCategory="102"
+        android:title="search"
+        app:actionViewClass="android.support.v7.widget.SearchView"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/menu_spinner"
+        android:orderInCategory="103"
+        android:title="选择城市"
+        app:actionViewClass="android.widget.Spinner"
+        app:showAsAction="always" />
+
+</menu>
