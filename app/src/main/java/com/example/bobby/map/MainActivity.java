@@ -1,9 +1,13 @@
 package com.example.bobby.map;
 
 import android.location.Location;
+import android.support.design.widget.TextInputEditText;
+import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.SearchView;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -13,8 +17,13 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
 import android.widget.Spinner;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import com.amap.api.location.AMapLocation;
+import com.amap.api.location.AMapLocationClient;
+import com.amap.api.location.AMapLocationClientOption;
+import com.amap.api.location.AMapLocationListener;
 import com.amap.api.maps.AMap;
 import com.amap.api.maps.CameraUpdateFactory;
 import com.amap.api.maps.MapView;
@@ -41,14 +50,22 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 public class MainActivity extends AppCompatActivity {
+    private AMapLocationClient mlocationClient;
+    private TextView CityofLocation;
+    private TextView cityTv;
     private MapView mapView;
     private AMap aMap;
-    private ListView listView;
+    private ListView PointlistView;
+    private ListView City_listView;
+    private TextView cityOfselect;
+    private DrawerLayout drawerLayout;
+    private SearchView searchCity;
     protected List<String> mlist = new ArrayList<>();
     private SearchView searchView;
     private LatLng AimlatLng;
     protected Button button;
     private String City = null;
+    private int Mode;
     private LatLng MyPosition;
     private Spinner spinner;
     private Poi start;
@@ -58,27 +75,88 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main_layout);
+        initWidget();
         initMap(savedInstanceState);
-        listView = (ListView) findViewById(R.id.Tips_listView);
-        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+        initCityListView();
+        PointlistView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 String name = mlist.get(position);
                 searchView.setQuery(name, true);
             }
         });
-        button = (Button) findViewById(R.id.guide);
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                AmapNaviPage.getInstance().showRouteActivity(MainActivity.this, new AmapNaviParams(start, null, end, AmapNaviType.DRIVER), new MyNaviInfoCallback());
+                switch (Mode){
+                    case 1:
+                        AmapNaviPage.getInstance().showRouteActivity(MainActivity.this,
+                                new AmapNaviParams(start, null, end, AmapNaviType.DRIVER),
+                                new MyNaviInfoCallback());
+                        break;
+                    case 2:
+                        AmapNaviPage.getInstance().showRouteActivity(MainActivity.this,
+                                new AmapNaviParams(start, null, end, AmapNaviType.RIDE),
+                                new MyNaviInfoCallback());
+                        break;
+                    case 3:
+                        AmapNaviPage.getInstance().showRouteActivity(MainActivity.this,
+                                new AmapNaviParams(start, null, end, AmapNaviType.WALK),
+                                new MyNaviInfoCallback());
+                        break;
+                    default:
+                        AmapNaviPage.getInstance().showRouteActivity(MainActivity.this,
+                                new AmapNaviParams(start, null, end, AmapNaviType.DRIVER),
+                                new MyNaviInfoCallback());
+                        break;
+                }
                 button.setVisibility(View.GONE);
+            }
+        });
+    }
+    private void initWidget(){
+        drawerLayout=(DrawerLayout)findViewById(R.id.drawlayout);
+        cityOfselect=(TextView)findViewById(R.id.cityOfselect);
+        PointlistView = (ListView) findViewById(R.id.Tips_listView);
+        CityofLocation=(TextView)findViewById(R.id.cityOfLocation);
+        button = (Button) findViewById(R.id.guide);
+        mapView = (MapView) findViewById(R.id.map);
+        cityTv=(TextView)findViewById(R.id.city_tv);
+        City_listView=(ListView)findViewById(R.id.city_listview);
+        searchCity=(SearchView)findViewById(R.id.search_city);
+    }
+    private void initCityListView(){
+        final ArrayAdapter<CharSequence> cityAdapter=ArrayAdapter.createFromResource
+                (MainActivity.this,R.array.city,android.R.layout.simple_list_item_1);
+        cityAdapter.notifyDataSetChanged();
+        City_listView.setAdapter(cityAdapter);
+        searchCity.setIconifiedByDefault(false);
+        City_listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                searchCity.setQuery(cityAdapter.getItem(position).toString(),true);
+            }
+        });
+        searchCity.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                City=query;
+                cityOfselect.setText(City);
+                cityTv.setVisibility(View.VISIBLE);
+                searchCity.setQuery("",false);
+                drawerLayout.closeDrawers();
+                return false;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                cityAdapter.getFilter().filter(newText);
+                return false;
             }
         });
     }
 
     private void initMap(Bundle savedInstanceState) {
-        mapView = (MapView) findViewById(R.id.map);
         mapView.onCreate(savedInstanceState);
         aMap = mapView.getMap();
         aMap.setMapType(AMap.MAP_TYPE_NORMAL);
@@ -95,6 +173,16 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         aMap.getUiSettings().setMyLocationButtonEnabled(true);//开启定位按钮
+        mlocationClient=new AMapLocationClient(getApplicationContext());
+        AMapLocationListener mAMapLocationListener = new AMapLocationListener() {
+            @Override
+            public void onLocationChanged(AMapLocation aMapLocation) {
+                CityofLocation.setText(aMapLocation.getCity());
+            }
+        };
+        mlocationClient.setLocationListener(mAMapLocationListener);
+        mlocationClient.startLocation();
+        City=CityofLocation.getText().toString();
     }
 
     private void searchGEO(final String position) {
@@ -107,7 +195,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onGeocodeSearched(GeocodeResult geocodeResult, int i) {
-                listView.setVisibility(View.GONE);
+                PointlistView.setVisibility(View.GONE);
                 if (geocodeResult == null) {
                     Toast.makeText(MainActivity.this, "没有查找到有关地点", Toast.LENGTH_SHORT).show();
                     return;
@@ -121,7 +209,7 @@ public class MainActivity extends AppCompatActivity {
                             .snippet("DefaultMarker")
                             .infoWindowEnable(true)
                             .visible(true));
-                    aMap.moveCamera(CameraUpdateFactory.newLatLngZoom(AimlatLng, 13));
+                    aMap.moveCamera(CameraUpdateFactory.newLatLngZoom(AimlatLng,18));
                     start = new Poi("", MyPosition, "");
                     end = new Poi("", AimlatLng, "");
                     button.setVisibility(View.VISIBLE);
@@ -129,10 +217,7 @@ public class MainActivity extends AppCompatActivity {
             }
         };
         GeocodeQuery query;
-        if (City == null) {
-            query = new GeocodeQuery(position, "珠海");
-        } else
-            query = new GeocodeQuery(position, City);
+        query = new GeocodeQuery(position,City);
         geocodeSearch.setOnGeocodeSearchListener(listener);
         geocodeSearch.getFromLocationNameAsyn(query);
     }
@@ -147,16 +232,13 @@ public class MainActivity extends AppCompatActivity {
                 }
                 ArrayAdapter<String> adapter = new ArrayAdapter<String>(MainActivity.this,
                         android.R.layout.simple_list_item_1, mlist);
-                listView.setAdapter(adapter);
+                PointlistView.setAdapter(adapter);
                 adapter.notifyDataSetChanged();
             }
         };
         InputtipsQuery inputquery;
-        if (City == null)
-            inputquery = new InputtipsQuery(newText, "珠海");
-        else
-            inputquery = new InputtipsQuery(newText, City);
-        inputquery.setCityLimit(true);//限制在当前城市
+        inputquery = new InputtipsQuery(newText, City);
+        inputquery.setCityLimit(true);
         Inputtips inputTips = new Inputtips(MainActivity.this, inputquery);
         inputTips.setInputtipsListener(listener);
         inputTips.requestInputtipsAsyn();
@@ -166,23 +248,24 @@ public class MainActivity extends AppCompatActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_main, menu);
         final MenuItem searchViewItem = menu.findItem(R.id.search_View);
+        //对出行方式进行初始化并选择
         final MenuItem Spinner = menu.findItem(R.id.menu_spinner);
         spinner = (Spinner) Spinner.getActionView();
-        final ArrayAdapter<CharSequence> CityAdapter = ArrayAdapter.createFromResource
-                (MainActivity.this, R.array.city, R.layout.spinner_item);
-        CityAdapter.setDropDownViewResource(R.layout.dropdown_stytle);
-        spinner.setAdapter(CityAdapter);
+        final ArrayAdapter<CharSequence> ModeAdapter = ArrayAdapter.createFromResource
+                (MainActivity.this, R.array.mode, R.layout.spinner_item);
+        ModeAdapter.setDropDownViewResource(R.layout.dropdown_stytle);
+        spinner.setAdapter(ModeAdapter);
         spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                City = CityAdapter.getItem(position).toString();
+                Mode = position;
             }
-
             @Override
             public void onNothingSelected(AdapterView<?> parent) {
 
             }
         });
+
         searchView = (SearchView) searchViewItem.getActionView();
         searchView.setSubmitButtonEnabled(true);
         searchView.setQueryHint("查找地点，公交站，地铁");
@@ -198,10 +281,10 @@ public class MainActivity extends AppCompatActivity {
             public boolean onQueryTextChange(String newText) {
                 if (!newText.equals("")) {
                     getInputTips(newText);
-                    listView.setVisibility(View.VISIBLE);
+                    PointlistView.setVisibility(View.VISIBLE);
                 } else {
                     button.setVisibility(View.GONE);
-                    listView.setVisibility(View.GONE);
+                    PointlistView.setVisibility(View.GONE);
                 }
                 return true;
             }

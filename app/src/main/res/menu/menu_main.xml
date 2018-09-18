@@ -5,7 +5,7 @@
     tools:context="com.example.bobby.location.MainActivity">
     <item
         android:id="@+id/search_View"
-        android:icon="@drawable/search"
+        android:icon="@android:drawable/ic_menu_search"
         android:orderInCategory="102"
         android:title="search"
         app:actionViewClass="android.support.v7.widget.SearchView"

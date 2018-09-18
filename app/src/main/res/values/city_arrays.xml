@@ -8,6 +8,17 @@
         <item>深圳</item>
         <item>武汉</item>
         <item>成都</item>
-        <item>重庆</item>
+        <item>天津</item>
+        <item>南京</item>
+        <item>沈阳</item>
+        <item>长春</item>
+        <item>哈尔滨</item>
+        <item>呼伦贝尔</item>
+        <item>呼和浩特</item>
+    </string-array>
+    <string-array name="mode">
+        <item>驾车</item>
+        <item>骑行</item>
+        <item>步行</item>
     </string-array>
 </resources>
